@@ -274,11 +274,24 @@
     const PRESETS = {
         // Keeping for later use or update for presets
     };
+    // Initialize state from LocalStorage or defaults
+    let userLibraries = JSON.parse(localStorage.getItem('vfc_libraries')) || {};
+    let draftDeck = JSON.parse(localStorage.getItem('vfc_draft')) || [];
+    
+    let activeDeck = [], filteredDeck = [], currentIndex = 0, currentIOMode = '';
+    let streak = 0, secondsElapsed = 0, filterWeak = false;
 
-    let draftDeck = [], activeDeck = [], filteredDeck = [], currentIndex = 0, userLibraries = {}, currentIOMode = '';
-    let streak = 0, timerInterval, secondsElapsed = 0, filterWeak = false;
+    function init() { 
+        refreshDropdown(); 
+        handleDeckSwitch(); 
+        startTimer(); 
+    }
 
-    function init() { refreshDropdown(); handleDeckSwitch(); startTimer(); }
+    // --- PERSISTENCE HELPERS ---
+    function persist() {
+        localStorage.setItem('vfc_libraries', JSON.stringify(userLibraries));
+        localStorage.setItem('vfc_draft', JSON.stringify(draftDeck));
+    }
 
     function showIO(mode) {
         currentIOMode = mode;
@@ -286,7 +299,7 @@
         const area = document.getElementById('ioTextarea');
         panel.classList.remove('hidden');
         if(mode === 'export') {
-            document.getElementById('ioLabel').textContent = "COPY SAVE CODE (WITH MASTERY)";
+            document.getElementById('ioLabel').textContent = "COPY SAVE CODE";
             area.value = JSON.stringify(userLibraries);
             area.select();
         } else {
@@ -298,8 +311,11 @@
     function processIO() {
         if(currentIOMode === 'import') {
             try {
-                userLibraries = JSON.parse(document.getElementById('ioTextarea').value);
-                refreshDropdown(); closeIO();
+                const imported = JSON.parse(document.getElementById('ioTextarea').value);
+                userLibraries = imported;
+                persist();
+                refreshDropdown(); 
+                closeIO();
             } catch(e) { alert("Invalid code."); }
         } else closeIO();
     }
@@ -313,6 +329,7 @@
             draftDeck.push({ q, a, m: false });
             document.getElementById('qInput').value = '';
             document.getElementById('aInput').value = '';
+            persist(); // Save draft progress
             handleDeckSwitch();
         }
     }
@@ -327,6 +344,7 @@
         if (name) {
             userLibraries[name] = [...draftDeck];
             draftDeck = [];
+            persist(); // Save new library and cleared draft
             refreshDropdown();
             document.getElementById('deckSelect').value = name;
             toggleSavePanel(false);
@@ -336,7 +354,8 @@
 
     function refreshDropdown() {
         const select = document.getElementById('deckSelect');
-        select.innerHTML = '<option value="draft">Current Draft</option><option value="amendments">Preset: US Amendments</option><option value="founding_docs">Preset: 9 Founding Docs</option>';
+        // Preset options removed, starting with Draft
+        select.innerHTML = '<option value="draft">Current Draft</option>';
         for (let name in userLibraries) {
             const opt = document.createElement('option');
             opt.value = opt.textContent = name;
@@ -346,9 +365,13 @@
 
     function handleDeckSwitch() {
         const val = document.getElementById('deckSelect').value;
-        activeDeck = (val === 'draft') ? draftDeck : (PRESETS[val] || userLibraries[val] || []);
+        activeDeck = (val === 'draft') ? draftDeck : (userLibraries[val] || []);
+        
         document.getElementById('editorView').classList.toggle('hidden', val !== 'draft');
-        document.getElementById('deleteBtn').classList.toggle('hidden', !['draft', 'amendments', 'founding_docs'].includes(val));
+        
+        // Only show delete button for saved user decks (not the draft)
+        document.getElementById('deleteBtn').classList.toggle('hidden', val === 'draft');
+        
         currentIndex = 0;
         applyFilter();
     }
@@ -371,11 +394,7 @@
         const card = filteredDeck[currentIndex];
         card.m = !card.m;
         
-        const deckName = document.getElementById('deckSelect').value;
-        if (userLibraries[deckName]) {
-            const originalIndex = activeDeck.indexOf(card);
-            userLibraries[deckName][originalIndex].m = card.m;
-        }
+        persist(); // Save mastery state immediately
 
         if (filterWeak && card.m) applyFilter(); else updateUI();
     }
@@ -418,15 +437,18 @@
     }
 
     function toggleFlip() { document.getElementById('cardInner').classList.toggle('is-flipped'); }
+    
     function changeCard(dir) {
-        let n = currentIndex + dir;
-        if (n >= 0 && n < filteredDeck.length) { currentIndex = n; updateUI(); }
-        else if (n >= filteredDeck.length) { currentIndex = 0; updateUI(); }
+        if (filteredDeck.length === 0) return;
+        currentIndex = (currentIndex + dir + filteredDeck.length) % filteredDeck.length;
+        updateUI();
     }
 
     function deleteCurrentDeck() {
-        if(confirm("Delete this deck?")) {
-            delete userLibraries[document.getElementById('deckSelect').value];
+        const current = document.getElementById('deckSelect').value;
+        if(current !== 'draft' && confirm(`Delete "${current}"?`)) {
+            delete userLibraries[current];
+            persist();
             refreshDropdown();
             document.getElementById('deckSelect').value = 'draft';
             handleDeckSwitch();
