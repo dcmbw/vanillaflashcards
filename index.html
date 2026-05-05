@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla Flashcards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --gold: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 540px;
+            background: var(--surface);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+
+        .form-group { margin-bottom: 16px; }
+        
+        label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+
+        .flex-row { display: flex; gap: 12px; align-items: center; }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            background: var(--surface-hover);
+            color: var(--text-main);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        button:hover { background: #475569; }
+        button.primary { background: var(--primary); color: white; }
+        button.success { background: var(--success); color: white; }
+        button.danger { background: var(--danger); color: white; }
+        button.gold { background: var(--gold); color: white; }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-color);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
+
+        .filter-bar {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 280px;
+            cursor: pointer;
+            margin: 15px 0;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .card-inner.is-flipped { transform: rotateY(180deg); }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px;
+            box-sizing: border-box;
+            border-radius: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            font-size: 1.1rem;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        .card-back { transform: rotateY(180deg); color: var(--primary); background: #0b1120; border-color: var(--primary); }
+
+        .mastered-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--gold);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>Vanilla Flashcards</h1>
+        <div class="flex-row">
+            <button onclick="showIO('export')">Export</button>
+            <button onclick="showIO('import')">Import</button>
+        </div>
+    </div>
+
+    <div id="ioPanel" class="form-group hidden" style="padding: 16px; background: var(--bg-color); border-radius: 8px; border: 1px solid var(--primary); margin-bottom: 20px;">
+        <label id="ioLabel">Data Management</label>
+        <textarea id="ioTextarea" rows="4" placeholder="Your save code..."></textarea>
+        <div class="flex-row" style="margin-top: 10px;">
+            <button id="ioConfirmBtn" class="primary" onclick="processIO()">Confirm</button>
+            <button onclick="closeIO()">Close</button>
+        </div>
+    </div>
+
+    <div class="form-group flex-row">
+        <div style="flex: 3;">
+            <label>Library</label>
+            <select id="deckSelect" onchange="handleDeckSwitch()">
+                <option value="draft">Current Draft</option>
+                <option value="amendments">Preset: US Amendments</option>
+                <option value="founding_docs">Preset: 9 Founding Docs</option>
+            </select>
+        </div>
+        <button class="danger hidden" id="deleteBtn" style="margin-top: 20px;" onclick="deleteCurrentDeck()">Delete</button>
+    </div>
+
+    <div id="studyView" class="hidden">
+        <div class="filter-bar">
+            <span>Filter: <strong>Weak Cards Only</strong></span>
+            <button id="filterToggle" onclick="toggleFilter()" style="max-width: 80px; padding: 4px;">OFF</button>
+        </div>
+
+        <div class="stats-bar">
+            <span id="timerDisplay">00:00</span>
+            <span id="streakDisplay">Streak: 0</span>
+            <span id="masteryDisplay">0 Mastered</span>
+        </div>
+
+        <div class="card-container" onclick="toggleFlip()">
+            <div class="card-inner" id="cardInner">
+                <div class="card-front">
+                    <div id="masteredBadgeFront" class="mastered-badge hidden">MASTERED</div>
+                    <div id="cardFront"></div>
+                </div>
+                <div class="card-back">
+                    <div id="masteredBadgeBack" class="mastered-badge hidden">MASTERED</div>
+                    <div id="cardBack"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex-row" style="margin-bottom: 12px;">
+            <button id="masteryBtn" class="gold" onclick="toggleMastery()">Mark Mastered</button>
+        </div>
+
+        <div class="flex-row">
+            <button class="danger" onclick="markPerformance(false)">Missed</button>
+            <button class="success" onclick="markPerformance(true)">Knew It</button>
+        </div>
+
+        <div class="flex-row" style="margin-top: 15px; justify-content: space-between;">
+            <button onclick="changeCard(-1)">Prev</button>
+            <div id="counter" style="color: var(--text-muted); font-size: 0.85rem;">0 / 0</div>
+            <button onclick="changeCard(1)">Next</button>
+        </div>
+    </div>
+
+    <div id="editorView">
+        <div class="form-group" style="padding: 16px; background: var(--bg-color); border-radius: 8px; border: 1px solid var(--border);">
+            <label>Add New Card</label>
+            <input type="text" id="qInput" placeholder="Term" style="margin-bottom: 10px;">
+            <textarea id="aInput" rows="2" placeholder="Definition"></textarea>
+            <button class="primary" style="width: 100%; margin-top: 10px;" onclick="addCard()">Add to Draft</button>
+        </div>
+        <div id="savePanel" class="form-group hidden">
+            <input type="text" id="deckNameInput" placeholder="Deck Name">
+            <div class="flex-row" style="margin-top: 10px;">
+                <button class="success" onclick="confirmSave()">Save Library</button>
+                <button onclick="toggleSavePanel(false)">Cancel</button>
+            </div>
+        </div>
+        <button class="success" id="initSaveBtn" style="width: 100%;" onclick="toggleSavePanel(true)">Save Draft as New Deck</button>
+    </div>
+</div>
+
+<script>
+    const PRESETS = {
+        amendments: [
+            { q: "1st Amendment", a: "Religion, speech, press, assembly, and petition.", m: false },
+            { q: "2nd Amendment", a: "Right to keep and bear arms.", m: false },
+            { q: "4th Amendment", a: "Protection against unreasonable search and seizure.", m: false },
+            { q: "5th Amendment", a: "Due process, double jeopardy, self-incrimination.", m: false },
+            { q: "6th Amendment", a: "Right to a speedy, public trial and counsel.", m: false },
+            { q: "8th Amendment", a: "Cruel and unusual punishment and excessive bail.", m: false },
+            { q: "10th Amendment", a: "Reserved powers to the States or people.", m: false },
+            { q: "13th Amendment", a: "Abolition of slavery.", m: false },
+            { q: "14th Amendment", a: "Citizenship, Due Process, and Equal Protection.", m: false },
+            { q: "15th Amendment", a: "Right to vote cannot be denied based on race.", m: false },
+            { q: "17th Amendment", a: "Direct election of Senators.", m: false },
+            { q: "19th Amendment", a: "Women's suffrage.", m: false },
+            { q: "22nd Amendment", a: "Two-term limit for the Presidency.", m: false },
+            { q: "25th Amendment", a: "Presidential succession and disability.", m: false },
+            { q: "26th Amendment", a: "Voting age lowered to 18.", m: false }
+        ],
+        founding_docs: [
+            { q: "Declaration of Independence", a: "Separation from Britain; natural rights and popular sovereignty.", m: false },
+            { q: "Articles of Confederation", a: "Weak central government with sovereign states.", m: false },
+            { q: "US Constitution", a: "Supreme law; creates three branches and federalism.", m: false },
+            { q: "Federalist No. 10", a: "Large republic controls the 'mischiefs of faction'.", m: false },
+            { q: "Brutus No. 1", a: "Anti-Federalist argument for state power and against tyranny.", m: false },
+            { q: "Federalist No. 51", a: "Separation of powers and checks and balances.", m: false },
+            { q: "Federalist No. 70", a: "Argues for a single, energetic executive.", m: false },
+            { q: "Federalist No. 78", a: "Discusses judicial review and judicial independence.", m: false },
+            { q: "Letter from Birmingham Jail", a: "Defense of nonviolent action and moral responsibility.", m: false }
+        ]
+    };
+
+    let draftDeck = [], activeDeck = [], filteredDeck = [], currentIndex = 0, userLibraries = {}, currentIOMode = '';
+    let streak = 0, timerInterval, secondsElapsed = 0, filterWeak = false;
+
+    function init() { refreshDropdown(); handleDeckSwitch(); startTimer(); }
+
+    function showIO(mode) {
+        currentIOMode = mode;
+        const panel = document.getElementById('ioPanel');
+        const area = document.getElementById('ioTextarea');
+        panel.classList.remove('hidden');
+        if(mode === 'export') {
+            document.getElementById('ioLabel').textContent = "COPY SAVE CODE (WITH MASTERY)";
+            area.value = JSON.stringify(userLibraries);
+            area.select();
+        } else {
+            document.getElementById('ioLabel').textContent = "PASTE SAVE CODE";
+            area.value = "";
+        }
+    }
+
+    function processIO() {
+        if(currentIOMode === 'import') {
+            try {
+                userLibraries = JSON.parse(document.getElementById('ioTextarea').value);
+                refreshDropdown(); closeIO();
+            } catch(e) { alert("Invalid code."); }
+        } else closeIO();
+    }
+
+    function closeIO() { document.getElementById('ioPanel').classList.add('hidden'); }
+
+    function addCard() {
+        const q = document.getElementById('qInput').value.trim();
+        const a = document.getElementById('aInput').value.trim();
+        if (q && a) {
+            draftDeck.push({ q, a, m: false });
+            document.getElementById('qInput').value = '';
+            document.getElementById('aInput').value = '';
+            handleDeckSwitch();
+        }
+    }
+
+    function toggleSavePanel(show) {
+        document.getElementById('savePanel').classList.toggle('hidden', !show);
+        document.getElementById('initSaveBtn').classList.toggle('hidden', show);
+    }
+
+    function confirmSave() {
+        const name = document.getElementById('deckNameInput').value.trim();
+        if (name) {
+            userLibraries[name] = [...draftDeck];
+            draftDeck = [];
+            refreshDropdown();
+            document.getElementById('deckSelect').value = name;
+            toggleSavePanel(false);
+            handleDeckSwitch();
+        }
+    }
+
+    function refreshDropdown() {
+        const select = document.getElementById('deckSelect');
+        select.innerHTML = '<option value="draft">Current Draft</option><option value="amendments">Preset: US Amendments</option><option value="founding_docs">Preset: 9 Founding Docs</option>';
+        for (let name in userLibraries) {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = name;
+            select.appendChild(opt);
+        }
+    }
+
+    function handleDeckSwitch() {
+        const val = document.getElementById('deckSelect').value;
+        activeDeck = (val === 'draft') ? draftDeck : (PRESETS[val] || userLibraries[val] || []);
+        document.getElementById('editorView').classList.toggle('hidden', val !== 'draft');
+        document.getElementById('deleteBtn').classList.toggle('hidden', !['draft', 'amendments', 'founding_docs'].includes(val));
+        currentIndex = 0;
+        applyFilter();
+    }
+
+    function toggleFilter() {
+        filterWeak = !filterWeak;
+        document.getElementById('filterToggle').textContent = filterWeak ? "ON" : "OFF";
+        document.getElementById('filterToggle').style.background = filterWeak ? "var(--primary)" : "var(--surface-hover)";
+        currentIndex = 0;
+        applyFilter();
+    }
+
+    function applyFilter() {
+        filteredDeck = filterWeak ? activeDeck.filter(c => !c.m) : [...activeDeck];
+        updateUI();
+    }
+
+    function toggleMastery() {
+        if (filteredDeck.length === 0) return;
+        const card = filteredDeck[currentIndex];
+        card.m = !card.m;
+        
+        const deckName = document.getElementById('deckSelect').value;
+        if (userLibraries[deckName]) {
+            const originalIndex = activeDeck.indexOf(card);
+            userLibraries[deckName][originalIndex].m = card.m;
+        }
+
+        if (filterWeak && card.m) applyFilter(); else updateUI();
+    }
+
+    function updateUI() {
+        const view = document.getElementById('studyView');
+        const masterCount = activeDeck.filter(c => c.m).length;
+        document.getElementById('masteryDisplay').textContent = `${masterCount} Mastered`;
+
+        if (filteredDeck.length > 0) {
+            view.classList.remove('hidden');
+            const card = filteredDeck[currentIndex];
+            document.getElementById('cardInner').classList.remove('is-flipped');
+            document.getElementById('cardFront').textContent = card.q;
+            document.getElementById('cardBack').textContent = card.a;
+            document.getElementById('counter').textContent = `${currentIndex + 1} / ${filteredDeck.length}`;
+            
+            document.getElementById('masteredBadgeFront').classList.toggle('hidden', !card.m);
+            document.getElementById('masteredBadgeBack').classList.toggle('hidden', !card.m);
+            document.getElementById('masteryBtn').textContent = card.m ? "Unmark Mastery" : "Mark Mastered";
+        } else {
+            view.classList.add('hidden');
+            if (filterWeak && activeDeck.length > 0) alert("All mastered! Turn off filter to review all.");
+        }
+    }
+
+    function startTimer() {
+        setInterval(() => {
+            secondsElapsed++;
+            let m = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+            let s = (secondsElapsed % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').textContent = `${m}:${s}`;
+        }, 1000);
+    }
+
+    function markPerformance(knewIt) {
+        if (knewIt) streak++; else streak = 0;
+        document.getElementById('streakDisplay').textContent = `Streak: ${streak}`;
+        changeCard(1);
+    }
+
+    function toggleFlip() { document.getElementById('cardInner').classList.toggle('is-flipped'); }
+    function changeCard(dir) {
+        let n = currentIndex + dir;
+        if (n >= 0 && n < filteredDeck.length) { currentIndex = n; updateUI(); }
+        else if (n >= filteredDeck.length) { currentIndex = 0; updateUI(); }
+    }
+
+    function deleteCurrentDeck() {
+        if(confirm("Delete this deck?")) {
+            delete userLibraries[document.getElementById('deckSelect').value];
+            refreshDropdown();
+            document.getElementById('deckSelect').value = 'draft';
+            handleDeckSwitch();
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
