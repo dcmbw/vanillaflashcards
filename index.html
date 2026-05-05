@@ -6,6 +6,7 @@
     <title>Vanilla Flashcards</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        html { scroll-behavior: smooth; }
         :root {
             --bg-color: #0f172a;
             --surface: #1e293b;
@@ -180,6 +181,11 @@
     </style>
 </head>
 <body>
+    <nav style="position: sticky; top: 0; background: white; padding: 15px; border-bottom: 2px solid #333; z-index: 1000; display: flex; gap: 20px;">
+    <a href="#top" style="text-decoration: none; color: #333; font-weight: bold;">Home</a>
+    <a href="#about" style="text-decoration: none; color: #333; font-weight: bold;">About</a>
+</nav>
+<div id="top"></div>
 
 <div class="app-container">
     <div class="header">
@@ -461,6 +467,14 @@
     }
 
     init();
+<section id="about" style="padding: 50px 20px; max-width: 800px; margin: auto; line-height: 1.6;">
+    <hr style="margin-bottom: 50px;">
+    <h1>About Vanilla Flashcards</h1>
+    <p>Welcome to <strong>Vanilla Flashcards</strong>! This is a lightweight, simple tool for practicing active recall without any unnecessary bloat.</p>
+    <p>Built using only <strong>HTML, CSS, and Vanilla JavaScript</strong>, it runs entirely in your browser.</p>
+    <p style="margin-top: 30px;"><a href="#top" style="background: #333; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Back to Top</a></p>
+</section>
+
 </script>
 </body>
 </html>
